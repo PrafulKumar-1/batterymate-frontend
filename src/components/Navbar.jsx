@@ -37,6 +37,10 @@ export default function Navbar() {
               <Link to="/" className="text-gray-700 hover:text-green-600 font-medium">
                 Dashboard
               </Link>
+              <Link to="/leaderboard" className="hover:text-green-100 transition flex items-center gap-1">
+  Leaderboard
+</Link>
+
               <Link to="/profile" className="text-gray-700 hover:text-green-600 font-medium">
                 Profile
               </Link>

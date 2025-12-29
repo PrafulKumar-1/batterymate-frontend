@@ -16,6 +16,8 @@ import NotFound from './pages/NotFound'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './components/Auth/Login'
 import Register from './components/Auth/Register'
+import Leaderboard from './components/Leaderboard'
+
 
 // Line 16-20: Import main navigation
 import Navbar from './components/Navbar'
@@ -67,6 +69,7 @@ export default function App() {
             {/* Line 30: Protected routes - require authentication */}
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
             {/* Line 33: Catch-all 404 route */}
