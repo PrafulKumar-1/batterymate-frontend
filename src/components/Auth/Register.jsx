@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import api from '../../services/api'
 
 export default function Register() {
-  // Line 6-12: Form data state
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -12,14 +11,11 @@ export default function Register() {
     vehicle_model: ''
   })
 
-  // Line 14: Navigation
   const navigate = useNavigate()
 
-  // Line 16-18: Loading and error state
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Line 20-26: Handle input change
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -28,74 +24,99 @@ export default function Register() {
     }))
   }
 
-  // Line 29-65: Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // Line 32-35: Validate passwords match
+    // Validate passwords match
     if (formData.password !== formData.confirm_password) {
       setError('Passwords do not match')
       return
     }
 
-    // Line 38-39: Validate password length
+    // Validate password length
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters')
       return
     }
+
+    // Email domain validation
+    const allowedDomains = [
+      'gmail.com', 'icloud.com', 'yahoo.com', 'outlook.com', 
+      'hotmail.com', 'yahoo.co.in', 'rediffmail.com'
+    ]
+    const emailParts = formData.email.split('@')
+    if (emailParts.length !== 2) {
+      setError('Invalid email format')
+      return
+    }
+    const domain = emailParts[1].toLowerCase().trim()
     
+    if (!allowedDomains.includes(domain)) {
+      setError('Email must be from Gmail, iCloud, Yahoo, Outlook, Hotmail, or Rediffmail')
+      return
+    }
+
+    // Validate vehicle selection
+    if (!formData.vehicle_model) {
+      setError('Please select a vehicle model')
+      return
+    }
+
     setLoading(true)
     setError('')
-    
+
     try {
-      // Line 46: Prepare registration data
       const registerData = {
-        name: formData.name,
-        email: formData.email,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
         password: formData.password,
         vehicle_model: formData.vehicle_model
       }
       
-      // Line 52: Call register API
       const response = await api.post('/api/auth/register', registerData)
-      
-      // Line 54: Navigate to login
       navigate('/login')
     } catch (error) {
-      // Line 57: Show error
       setError(error.response?.data?.error || 'Registration failed')
     } finally {
-      // Line 59: Set loading false
       setLoading(false)
     }
   }
 
+  const allEVs = [
+    // Electric Cars
+    'Tata Nexon EV', 'Tata Punch EV', 'Tata Tiago EV', 'MG Comet EV', 'MG ZS EV',
+    'Mahindra XUV400', 'Hyundai Ioniq 5', 'Kia EV6', 'BYD Atto 3', 'BYD Seal',
+    'Tesla Model 3', 'Tesla Model Y', 'BMW i4', 'BMW iX1', 'BMW i7',
+    'Volvo EX30', 'Volvo EX40', 'Kia EV9', 'Mahindra BE 6', 'Mahindra XEV 9S',
+    'MG M9', 'BYD Sealion 7', 'Citroen eC3', 'Tata Curvv EV',
+    
+    // Electric Two-Wheelers (Scooters & Bikes)
+    'TVS iQube', 'Bajaj Chetak', 'Ather 450X', 'Ola S1 Pro', 'Hero Vida VX2',
+    'Ather Rizta', 'Yulu Wynn', 'Honda Activa e', 'Okinawa Okhi-90', 'Ampere Magnus Pro',
+    'Simple One', 'Revolt RV400', 'Ultraviolette F77', 'Tork Kratos', 'Oben Rorr',
+    'Ola Roadster X', 'TVS Orbiter', 'Hero Electric Optima', 'BGauss RUV350',
+    'Okinawa Ridge Plus', 'Vida V1 Pro', 'Ather 450 Apex'
+  ]
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
       <div className="w-full max-w-md">
-        
-        {/* Line 66-70: Card */}
         <div className="bg-white rounded-lg shadow-lg p-8">
-          
-          {/* Line 69-71: Title */}
           <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">
             Create Account
           </h1>
 
-          {/* Line 73-76: Error message */}
           {error && (
-            <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">
+            <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6 border-l-4 border-red-500">
               {error}
             </div>
           )}
 
-          {/* Line 78-150: Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Line 80-88: Name input */}
+            {/* Name input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name
+                Full Name *
               </label>
               <input
                 type="text"
@@ -103,15 +124,15 @@ export default function Register() {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                 placeholder="John Doe"
               />
             </div>
 
-            {/* Line 90-98: Email input */}
+            {/* Email input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
+                Email Address *
               </label>
               <input
                 type="email"
@@ -119,15 +140,15 @@ export default function Register() {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="you@example.com"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                placeholder="you@gmail.com"
               />
             </div>
 
-            {/* Line 100-108: Password input */}
+            {/* Password input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
+                Password *
               </label>
               <input
                 type="password"
@@ -135,15 +156,15 @@ export default function Register() {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                 placeholder="••••••••"
               />
             </div>
 
-            {/* Line 110-118: Confirm password input */}
+            {/* Confirm password input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password
+                Confirm Password *
               </label>
               <input
                 type="password"
@@ -151,40 +172,45 @@ export default function Register() {
                 value={formData.confirm_password}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                 placeholder="••••••••"
               />
             </div>
 
-            {/* Line 120-128: Vehicle model input */}
+            {/* Vehicle model dropdown */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Vehicle Model
+                EV Vehicle Model (Car/Scooter/Bike) *
               </label>
-              <input
-                type="text"
+              <select
                 name="vehicle_model"
                 value={formData.vehicle_model}
                 onChange={handleChange}
-                placeholder="e.g., Tesla Model 3"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 appearance-none bg-white cursor-pointer"
+              >
+                <option value="">Select your EV</option>
+                {allEVs.map((vehicle) => (
+                  <option key={vehicle} value={vehicle}>
+                    {vehicle}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Line 130-136: Submit button */}
+            {/* Submit button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 font-semibold mt-6"
+              className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-semibold mt-6 transition-all duration-200 shadow-md hover:shadow-lg"
             >
               {loading ? 'Creating Account...' : 'Register'}
             </button>
           </form>
 
-          {/* Line 139-144: Login link */}
           <p className="text-center text-gray-600 mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-green-600 hover:text-green-700 font-semibold">
+            <Link to="/login" className="text-green-600 hover:text-green-700 font-semibold hover:underline">
               Login
             </Link>
           </p>
