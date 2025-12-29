@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export default function Navigation({ onTripComplete }) {
+  const navigate = useNavigate()
   const [navigationState, setNavigationState] = useState('idle')
   const [directions, setDirections] = useState([])
   const [currentStep, setCurrentStep] = useState(0)
   const [tripData, setTripData] = useState(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [tripStats, setTripStats] = useState({
     distanceTraveled: 0,
     co2Saved: 0,
@@ -24,7 +27,7 @@ export default function Navigation({ onTripComplete }) {
 
   // Generate turn-by-turn directions
   const generateDirections = (route) => {
-    const distance = route.route?.distance_km || 100
+    const distance = route.route?.distance_km || 35.2
     const newDirections = [
       {
         step: 1,
@@ -72,27 +75,42 @@ export default function Navigation({ onTripComplete }) {
     setDirections(newDirections)
   }
 
-  // Simulate navigation steps
+  // Simulate navigation steps - Updates every 3 seconds
   useEffect(() => {
-    if (navigationState !== 'navigating' || !tripData) return
+    if (navigationState !== 'navigating' || !tripData || directions.length === 0) return
 
     const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 3)
+      
       setCurrentStep((prev) => {
         const nextStep = prev + 1
 
-        // Update stats
-        const totalDistance = tripData.route?.distance_km || 100
+        // Calculate actual trip statistics
+        const totalDistance = tripData.route?.distance_km || 35.2
         const distanceTraveled = (nextStep / directions.length) * totalDistance
+        const timeTraveledMinutes = Math.max(60, nextStep * 3) // At least 60 minutes
+        const avgSpeed = timeTraveledMinutes > 0 
+          ? parseFloat((distanceTraveled / timeTraveledMinutes * 60).toFixed(1))
+          : 60
+
         setTripStats({
-          distanceTraveled: distanceTraveled.toFixed(1),
-          co2Saved: (distanceTraveled * 0.12).toFixed(2),
-          timeTraveled: nextStep * 2,
-          currentSpeed: 60,
+          distanceTraveled: parseFloat(distanceTraveled.toFixed(1)),
+          co2Saved: parseFloat((distanceTraveled * 0.12).toFixed(2)),
+          timeTraveled: timeTraveledMinutes,
+          currentSpeed: avgSpeed,
         })
 
         // Check if trip completed
         if (nextStep >= directions.length) {
-          handleTripComplete()
+          // Finalize trip data with full statistics
+          const finalTripStats = {
+            distanceTraveled: parseFloat(totalDistance.toFixed(1)),
+            co2Saved: parseFloat((totalDistance * 0.12).toFixed(2)),
+            timeTraveled: Math.max(60, elapsedSeconds / 60),
+            currentSpeed: 60,
+          }
+          
+          handleTripComplete(finalTripStats)
           return prev
         }
 
@@ -101,24 +119,31 @@ export default function Navigation({ onTripComplete }) {
     }, 3000) // Move to next step every 3 seconds
 
     return () => clearInterval(interval)
-  }, [navigationState, tripData, directions.length])
+  }, [navigationState, tripData, directions.length, elapsedSeconds])
 
   // Handle trip completion
-  const handleTripComplete = async () => {
+  const handleTripComplete = (finalStats) => {
     setNavigationState('completed')
-    try {
-      if (onTripComplete) {
-        onTripComplete({
-          tripStats: tripStats,
-          route: tripData.route,
-          startLocation: tripData.startLocation,
-          endLocation: tripData.endLocation,
-          startCoords: tripData.startCoords,
-          endCoords: tripData.endCoords,
-        })
-      }
-    } catch (error) {
-      console.error('Error completing trip:', error)
+    
+    const completionData = {
+      tripStats: finalStats || tripStats,
+      route: tripData.route,
+      startLocation: tripData.startLocation,
+      endLocation: tripData.endLocation,
+      startCoords: tripData.startCoords,
+      endCoords: tripData.endCoords,
+    }
+
+    // Auto navigate to trip summary after 2 seconds
+    setTimeout(() => {
+      navigate('/trip-summary', {
+        state: completionData,
+      })
+    }, 2000)
+
+    // Also call callback if provided
+    if (onTripComplete) {
+      onTripComplete(completionData)
     }
   }
 
@@ -136,7 +161,7 @@ export default function Navigation({ onTripComplete }) {
       <div className="text-center py-12 bg-green-50 rounded-lg border-2 border-green-200">
         <div className="text-5xl mb-4">✅</div>
         <p className="text-green-600 font-bold text-lg">Trip completed successfully!</p>
-        <p className="text-gray-600 text-sm mt-2">Check summary for details</p>
+        <p className="text-gray-600 text-sm mt-2">Redirecting to summary...</p>
       </div>
     )
   }
@@ -175,7 +200,7 @@ export default function Navigation({ onTripComplete }) {
         <h3 className="font-bold text-gray-800 mb-3">📍 Current Direction</h3>
         <div className="bg-gray-50 p-4 rounded-lg">
           <p className="text-gray-700 font-semibold text-center">
-            {directions[currentStep]?.instruction}
+            {directions[currentStep]?.instruction || 'Starting navigation...'}
           </p>
           <p className="text-gray-600 text-sm text-center mt-2">
             Distance: {directions[currentStep]?.distance.toFixed(1)} km
@@ -209,6 +234,16 @@ export default function Navigation({ onTripComplete }) {
         </div>
       </div>
 
+      {/* Progress Bar */}
+      {navigationState === 'navigating' && (
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+            style={{ width: `${(currentStep / directions.length) * 100}%` }}
+          ></div>
+        </div>
+      )}
+
       {/* Start Navigation Button */}
       {navigationState === 'idle' && (
         <button
@@ -223,7 +258,13 @@ export default function Navigation({ onTripComplete }) {
         <div className="text-center py-3">
           <div className="inline-block animate-pulse">
             <p className="text-green-600 font-semibold">🚗 Navigating...</p>
-            <p className="text-gray-600 text-xs">Step {currentStep} of {directions.length}</p>
+            <p className="text-gray-600 text-xs">
+              Step {currentStep} of {directions.length} 
+              ({Math.round((currentStep / directions.length) * 100)}%)
+            </p>
+            <p className="text-gray-500 text-xs mt-1">
+              Auto-completing in {Math.max(0, 18 - Math.floor(elapsedSeconds / 3))} steps
+            </p>
           </div>
         </div>
       )}
