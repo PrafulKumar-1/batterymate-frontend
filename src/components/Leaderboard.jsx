@@ -14,54 +14,43 @@ export default function Leaderboard() {
         setLoading(true)
         setError(null)
         const response = await api.get(`/api/eco-score/leaderboard?category=${category}`)
-        
-        // FIX: Access response.data.data (not just response.data)
-        let data = response.data.data || []
-        if (!Array.isArray(data)) {
-          data = []
-        }
-        
-        console.log('Leaderboard data:', data)
+
+        // Backend: { success, data: [...] }
+        let data = response.data?.data || []
+        if (!Array.isArray(data)) data = []
+
         setLeaderboard(data)
         setLoading(false)
-      } catch (error) {
-        console.error('Error fetching leaderboard:', error)
+      } catch (err) {
+        console.error('Error fetching leaderboard:', err)
         setError('Failed to load leaderboard. Please try again.')
         setLoading(false)
       }
     }
+
     fetchLeaderboard()
   }, [category])
 
   const getRankBadge = (rank) => {
-    switch (rank) {
-      case 1:
-        return '🥇'
-      case 2:
-        return '🥈'
-      case 3:
-        return '🥉'
-      default:
-        return `#${rank}`
-    }
+    if (rank === 1) return '🥇'
+    if (rank === 2) return '🥈'
+    if (rank === 3) return '🥉'
+    return `#${rank}`
   }
 
   const getLevelBadge = (score) => {
-    const numScore = parseFloat(score) || 0
-    if (numScore >= 90)
-      return { label: 'Platinum', color: 'from-blue-400 to-blue-600', emoji: '💎' }
-    if (numScore >= 70)
-      return { label: 'Gold', color: 'from-yellow-400 to-yellow-600', emoji: '🥇' }
-    if (numScore >= 50)
-      return { label: 'Silver', color: 'from-gray-400 to-gray-600', emoji: '🎖️' }
+    const num = parseFloat(score) || 0
+    if (num >= 90) return { label: 'Platinum', color: 'from-blue-400 to-blue-600', emoji: '💎' }
+    if (num >= 70) return { label: 'Gold', color: 'from-yellow-400 to-yellow-600', emoji: '🥇' }
+    if (num >= 50) return { label: 'Silver', color: 'from-gray-400 to-gray-600', emoji: '🎖️' }
     return { label: 'Bronze', color: 'from-orange-400 to-orange-600', emoji: '🏅' }
   }
 
   const getScoreColor = (score) => {
-    const numScore = parseFloat(score) || 0
-    if (numScore >= 90) return 'text-blue-600'
-    if (numScore >= 70) return 'text-green-600'
-    if (numScore >= 50) return 'text-yellow-600'
+    const num = parseFloat(score) || 0
+    if (num >= 90) return 'text-blue-600'
+    if (num >= 70) return 'text-green-600'
+    if (num >= 50) return 'text-yellow-600'
     return 'text-orange-600'
   }
 
@@ -70,7 +59,7 @@ export default function Leaderboard() {
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto" />
             <p className="mt-4 text-gray-600">Loading leaderboard...</p>
           </div>
         </div>
@@ -102,10 +91,10 @@ export default function Leaderboard() {
 
         <div className="flex justify-center gap-3 mb-8 flex-wrap">
           {[
-            { id: 'eco-score', label: ' Eco Score', icon: '📊' },
-            { id: 'distance', label: ' Distance', icon: '🚗' },
-            { id: 'co2-saved', label: ' CO₂ Saved', icon: '🌱' },
-            { id: 'trips', label: ' Trips', icon: '✈️' },
+            { id: 'eco-score', label: '⚡ Eco Score', icon: '📊' },
+            { id: 'distance', label: '📍 Distance', icon: '🚗' },
+            { id: 'co2-saved', label: '🌍 CO₂ Saved', icon: '🌱' },
+            { id: 'trips', label: '🗺️ Trips', icon: '✈️' },
           ].map((cat) => (
             <button
               key={cat.id}
@@ -124,11 +113,13 @@ export default function Leaderboard() {
           ))}
         </div>
 
-        {leaderboard && leaderboard.length > 0 ? (
+        {leaderboard.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Top 3 */}
             <div className="lg:col-span-3 mb-8">
               <h2 className="text-2xl font-bold text-gray-800 mb-6">🎯 Top 3 Champions</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* 2nd */}
                 {leaderboard[1] && (
                   <div className="relative">
                     <div
@@ -143,7 +134,11 @@ export default function Leaderboard() {
                         <p className="text-sm text-gray-500">
                           {leaderboard[1].vehicle_model || 'EV User'}
                         </p>
-                        <div className={`text-3xl font-bold mt-3 ${getScoreColor(leaderboard[1].eco_score)}`}>
+                        <div
+                          className={`text-3xl font-bold mt-3 ${getScoreColor(
+                            leaderboard[1].eco_score
+                          )}`}
+                        >
                           {parseFloat(leaderboard[1].eco_score || 0).toFixed(1)}
                         </div>
                         <p className="text-xs text-gray-500 mt-1">points</p>
@@ -160,6 +155,7 @@ export default function Leaderboard() {
                   </div>
                 )}
 
+                {/* 1st */}
                 {leaderboard[0] && (
                   <div className="relative lg:scale-110">
                     <div
@@ -171,7 +167,9 @@ export default function Leaderboard() {
                         <h3 className="font-bold text-xl text-gray-900 truncate">
                           {leaderboard[0].name || 'Anonymous'}
                         </h3>
-                        <p className="text-sm text-gray-700">{leaderboard[0].vehicle_model || 'EV User'}</p>
+                        <p className="text-sm text-gray-700">
+                          {leaderboard[0].vehicle_model || 'EV User'}
+                        </p>
                         <div className="text-4xl font-bold mt-4 text-gray-900">
                           {parseFloat(leaderboard[0].eco_score || 0).toFixed(1)}
                         </div>
@@ -189,6 +187,7 @@ export default function Leaderboard() {
                   </div>
                 )}
 
+                {/* 3rd */}
                 {leaderboard[2] && (
                   <div className="relative">
                     <div
@@ -203,7 +202,11 @@ export default function Leaderboard() {
                         <p className="text-sm text-gray-500">
                           {leaderboard[2].vehicle_model || 'EV User'}
                         </p>
-                        <div className={`text-3xl font-bold mt-3 ${getScoreColor(leaderboard[2].eco_score)}`}>
+                        <div
+                          className={`text-3xl font-bold mt-3 ${getScoreColor(
+                            leaderboard[2].eco_score
+                          )}`}
+                        >
                           {parseFloat(leaderboard[2].eco_score || 0).toFixed(1)}
                         </div>
                         <p className="text-xs text-gray-500 mt-1">points</p>
@@ -222,6 +225,7 @@ export default function Leaderboard() {
               </div>
             </div>
 
+            {/* Full table */}
             <div className="lg:col-span-3">
               <div className="bg-white rounded-lg shadow-lg overflow-hidden">
                 <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white p-6">
@@ -355,7 +359,9 @@ export default function Leaderboard() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <p className="text-xs text-gray-600 mb-1">Vehicle</p>
-                    <p className="text-sm font-bold text-gray-800">🚗 {selectedUser.vehicle_model || 'EV'}</p>
+                    <p className="text-sm font-bold text-gray-800">
+                      🚗 {selectedUser.vehicle_model || 'EV'}
+                    </p>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
                     <p className="text-xs text-gray-600 mb-1">Level</p>
@@ -374,7 +380,9 @@ export default function Leaderboard() {
                   </div>
                   <div className="bg-purple-50 p-4 rounded-lg">
                     <p className="text-xs text-gray-600 mb-1">Trips</p>
-                    <p className="text-lg font-bold text-purple-600">🗺️ {selectedUser.trips_count || 0}</p>
+                    <p className="text-lg font-bold text-purple-600">
+                      🗺️ {selectedUser.trips_count || 0}
+                    </p>
                   </div>
                 </div>
 

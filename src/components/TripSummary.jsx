@@ -1,220 +1,171 @@
-import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import api from '../services/api'
 
-export default function TripSummary() {
-  const location = useLocation()
-  const navigate = useNavigate()
+export default function TripSummary({ tripData }) {
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [error, setError] = useState('')
 
-  const tripState = location.state || {
-    tripStats: {
+  // Use props or default values
+  const {
+    tripStats = {
       distanceTraveled: 0,
       co2Saved: 0,
       timeTraveled: 0,
-      currentSpeed: 0
+      currentSpeed: 0,
     },
-    route: {},
-    startLocation: 'Unknown',
-    endLocation: 'Unknown'
+    route = {},
+    startLocation = 'Unknown',
+    endLocation = 'Unknown',
+  } = tripData || {}
+
+  const calculateEcoScore = () => {
+    const score = Math.min(100, Math.floor(parseFloat(tripStats.co2Saved) * 5))
+    return score
   }
 
-  const { tripStats, route, startLocation, endLocation } = tripState
+  const treesEquivalent = Math.round(parseFloat(tripStats.co2Saved) / 0.021) // 1 tree = 21kg CO2/year
 
-  // Save trip to database
   const handleSaveTrip = async () => {
+    if (!tripData) {
+      setError('No trip data available')
+      return
+    }
+
     setIsSaving(true)
+    setError('')
+
     try {
-      await api.post('/api/trips/save', {
+      const payload = {
         start_location: startLocation,
         end_location: endLocation,
-        distance_km: tripStats.distanceTraveled,
-        duration_minutes: tripStats.timeTraveled,
-        co2_saved_grams: tripStats.co2Saved * 1000,
-        eco_score: calculateEcoScore()
-      })
+        distance_km: parseFloat(tripStats.distanceTraveled),
+        duration_minutes: parseInt(tripStats.timeTraveled),
+        co2_saved_grams: parseFloat(tripStats.co2Saved) * 1000,
+        eco_score: calculateEcoScore(),
+        date: new Date().toISOString(),
+      }
+
+      console.log('Saving trip:', payload)
+
+      const response = await api.post('/api/trips/save', payload)
+      console.log('Trip saved:', response.data)
 
       setSaveSuccess(true)
-      setTimeout(() => navigate('/dashboard'), 2000)
+      // Keep success message visible for 3 seconds
+      setTimeout(() => {
+        setSaveSuccess(false)
+      }, 3000)
     } catch (error) {
       console.error('Error saving trip:', error)
+      setError(error.response?.data?.message || 'Failed to save trip')
     } finally {
       setIsSaving(false)
     }
   }
 
-  // Calculate eco score based on trip
-  const calculateEcoScore = () => {
-    const score = Math.min(100, Math.floor(tripStats.co2Saved * 5))
-    return score
+  const ecoScore = calculateEcoScore()
+
+  if (!tripData) {
+    return (
+      <div className="text-center py-12 bg-yellow-50 rounded-lg border-2 border-yellow-200">
+        <p className="text-yellow-600 font-semibold">⏳ Complete navigation to see summary</p>
+        <p className="text-gray-600 text-sm mt-2">Start navigation to begin tracking your eco-friendly trip</p>
+      </div>
+    )
   }
 
-  const ecoScore = calculateEcoScore()
-  const treesEquivalent = Math.round(tripStats.co2Saved / 0.021) // 1 tree = 21kg CO2/year
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-blue-50 p-6">
-      <div className="max-w-2xl mx-auto">
-        {/* Success Message */}
-        {saveSuccess && (
-          <div className="mb-6 p-4 bg-green-100 border-2 border-green-500 rounded-lg text-center">
-            <div className="text-2xl font-bold text-green-600"> Trip Saved Successfully!</div>
-            <div className="text-gray-600">Redirecting to dashboard...</div>
-          </div>
-        )}
+    <div className="space-y-6">
+      {/* Trip Info Card */}
+      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-lg border-2 border-blue-200">
+        <h3 className="text-lg font-bold text-gray-800 mb-2">📍 Trip Route</h3>
+        <p className="text-blue-900 font-semibold text-center">
+          {startLocation} → {endLocation}
+        </p>
+      </div>
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2"> Trip Complete!</h1>
-          <p className="text-xl text-gray-600">
-            {startLocation} → {endLocation}
+      {/* Trip Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-blue-50 rounded-lg p-4 text-center border-2 border-blue-200">
+          <p className="text-gray-600 text-xs font-medium">Distance Traveled</p>
+          <p className="text-blue-600 font-bold text-2xl mt-2">{tripStats.distanceTraveled}</p>
+          <p className="text-gray-500 text-xs">km</p>
+        </div>
+        <div className="bg-green-50 rounded-lg p-4 text-center border-2 border-green-200">
+          <p className="text-gray-600 text-xs font-medium">CO₂ Saved</p>
+          <p className="text-green-600 font-bold text-2xl mt-2">{tripStats.co2Saved}</p>
+          <p className="text-gray-500 text-xs">kg</p>
+        </div>
+        <div className="bg-yellow-50 rounded-lg p-4 text-center border-2 border-yellow-200">
+          <p className="text-gray-600 text-xs font-medium">Duration</p>
+          <p className="text-yellow-600 font-bold text-2xl mt-2">{tripStats.timeTraveled}</p>
+          <p className="text-gray-500 text-xs">minutes</p>
+        </div>
+        <div className="bg-purple-50 rounded-lg p-4 text-center border-2 border-purple-200">
+          <p className="text-gray-600 text-xs font-medium">Avg Speed</p>
+          <p className="text-purple-600 font-bold text-2xl mt-2">{tripStats.currentSpeed}</p>
+          <p className="text-gray-500 text-xs">km/h</p>
+        </div>
+      </div>
+
+      {/* Eco Score & Environmental Impact */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Eco Score */}
+        <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-lg text-white">
+          <p className="text-sm font-medium opacity-90">Eco Score</p>
+          <p className="text-5xl font-bold mt-2">{ecoScore}</p>
+          <p className="text-sm mt-2 opacity-90">
+            {ecoScore >= 90 ? '🌟 Excellent' : ecoScore >= 70 ? '✅ Good' : '📈 Fair'} eco-driving
           </p>
         </div>
 
-        {/* Main Stats */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-          {/* Eco Score Circle */}
-          <div className="flex justify-center mb-8">
-            <div className="relative w-40 h-40">
-              <svg className="w-full h-full" viewBox="0 0 160 160">
-                <circle cx="80" cy="80" r="70" fill="none" stroke="#e5e7eb" strokeWidth="8" />
-                <circle
-                  cx="80"
-                  cy="80"
-                  r="70"
-                  fill="none"
-                  stroke={ecoScore >= 80 ? '#10b981' : ecoScore >= 60 ? '#f59e0b' : '#ef4444'}
-                  strokeWidth="8"
-                  strokeDasharray={`${(ecoScore / 100) * 440} 440`}
-                  className="transition-all duration-500"
-                />
-                <text
-                  x="80"
-                  y="90"
-                  textAnchor="middle"
-                  className="text-3xl font-bold"
-                  fill={ecoScore >= 80 ? '#10b981' : ecoScore >= 60 ? '#f59e0b' : '#ef4444'}
-                >
-                  {ecoScore}
-                </text>
-              </svg>
-            </div>
-          </div>
-
-          {/* Eco Score Label */}
-          <div className="text-center mb-8">
-            <div className="text-2xl font-bold mb-2">
-              {ecoScore >= 80 ? ' Excellent' : ecoScore >= 60 ? ' Good' : ' Fair'} Eco Score
-            </div>
-            <p className="text-gray-600">
-              You're making a positive environmental impact!
-            </p>
-          </div>
-
-          {/* Main Metrics */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500">
-              <div className="text-gray-600 text-sm mb-1">Distance Traveled</div>
-              <div className="text-3xl font-bold text-blue-600">{tripStats.distanceTraveled.toFixed(1)} km</div>
-              <div className="text-xs text-gray-500 mt-1">at avg {(tripStats.distanceTraveled / (tripStats.timeTraveled || 1) * 60).toFixed(1)} km/h</div>
-            </div>
-
-            <div className="bg-green-50 p-6 rounded-lg border-l-4 border-green-500">
-              <div className="text-gray-600 text-sm mb-1">CO2 Saved</div>
-              <div className="text-3xl font-bold text-green-600">{tripStats.co2Saved.toFixed(2)} kg</div>
-              <div className="text-xs text-gray-500 mt-1">vs petrol vehicle</div>
-            </div>
-
-            <div className="bg-purple-50 p-6 rounded-lg border-l-4 border-purple-500">
-              <div className="text-gray-600 text-sm mb-1">Time Traveled</div>
-              <div className="text-3xl font-bold text-purple-600">{tripStats.timeTraveled} min</div>
-              <div className="text-xs text-gray-500 mt-1">at avg {tripStats.currentSpeed.toFixed(1)} km/h</div>
-            </div>
-
-            <div className="bg-yellow-50 p-6 rounded-lg border-l-4 border-yellow-500">
-              <div className="text-gray-600 text-sm mb-1">Trees Equivalent</div>
-              <div className="text-3xl font-bold text-yellow-600">{treesEquivalent} </div>
-              <div className="text-xs text-gray-500 mt-1">CO2 offset</div>
-            </div>
-          </div>
-
-          {/* Route Info */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-6">
-            <h3 className="font-bold text-lg mb-3"> Route Details</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Route Selected:</span>
-                <span className="font-bold">{route.name || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Route Cost:</span>
-                <span className="font-bold">₹{(route.cost || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Air Quality:</span>
-                <span className="font-bold">{route.aqi_level || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Savings:</span>
-                <span className="font-bold text-green-600">₹{((route.cost || 0) * 0.2).toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Achievements */}
-          <div className="bg-gradient-to-r from-green-100 to-blue-100 p-4 rounded-lg">
-            <h3 className="font-bold text-lg mb-3"> Achievements Unlocked</h3>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-white p-3 rounded text-center">
-                <div className="text-2xl mb-1"></div>
-                <div className="text-xs font-bold">First Trip</div>
-              </div>
-              <div className="bg-white p-3 rounded text-center">
-                <div className="text-2xl mb-1"></div>
-                <div className="text-xs font-bold">Eco Warrior</div>
-              </div>
-              <div className="bg-white p-3 rounded text-center">
-                <div className="text-2xl mb-1"></div>
-                <div className="text-xs font-bold">EV Pioneer</div>
-              </div>
-            </div>
-          </div>
+        {/* Environmental Impact */}
+        <div className="bg-gradient-to-br from-green-600 to-green-800 p-6 rounded-lg text-white">
+          <p className="text-sm font-medium opacity-90">Trees Planted Equivalent</p>
+          <p className="text-5xl font-bold mt-2">{treesEquivalent}</p>
+          <p className="text-sm mt-2 opacity-90">Environmental offset from this trip</p>
         </div>
+      </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-4">
-          <button
-            onClick={handleSaveTrip}
-            disabled={isSaving || saveSuccess}
-            className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
-          >
-            {isSaving ? ' Saving...' : saveSuccess ? ' Saved!' : ' Save Trip'}
-          </button>
-
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-lg transition-colors"
-          >
-             View Dashboard
-          </button>
+      {/* Success Message */}
+      {saveSuccess && (
+        <div className="bg-green-100 border-2 border-green-500 rounded-lg p-4 text-center">
+          <p className="text-green-700 font-bold">✅ Trip saved to your history!</p>
         </div>
+      )}
 
-        {/* Share Options */}
-        <div className="mt-6 p-4 bg-white rounded-lg shadow">
-          <h3 className="font-bold mb-3"> Share Your Achievement</h3>
-          <div className="flex gap-3">
-            <button className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
-               Facebook
-            </button>
-            <button className="flex-1 bg-sky-500 text-white py-2 rounded hover:bg-sky-600">
-               Twitter
-            </button>
-            <button className="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600">
-               WhatsApp
-            </button>
-          </div>
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 border-2 border-red-500 rounded-lg p-4 text-center">
+          <p className="text-red-700 font-bold">❌ {error}</p>
         </div>
+      )}
+
+      {/* Save Trip Button */}
+      <button
+        onClick={handleSaveTrip}
+        disabled={isSaving || saveSuccess}
+        className={`w-full py-3 font-bold rounded-lg transition-all ${
+          saveSuccess
+            ? 'bg-green-600 text-white'
+            : isSaving
+              ? 'bg-gray-400 text-white cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-700 text-white'
+        }`}
+      >
+        {isSaving ? '💾 Saving...' : saveSuccess ? '✅ Saved to History' : '💾 Save Trip to History'}
+      </button>
+
+      {/* Impact Statement */}
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-lg border-2 border-green-200">
+        <p className="text-center text-gray-700">
+          <span className="font-bold text-green-600">🌍 You're making a positive environmental impact!</span>
+        </p>
+        <p className="text-center text-sm text-gray-600 mt-2">
+          This trip saved {tripStats.co2Saved} kg of CO₂ and is equivalent to planting{' '}
+          <span className="font-bold text-green-600">{treesEquivalent} trees</span>
+        </p>
       </div>
     </div>
   )
